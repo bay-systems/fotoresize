@@ -28,3 +28,6 @@ This script will run in any BASH shell on a system that has ImageMagick installe
 fotoresize <file>|<directory>
 ```
 
+## To Do
+
+Right now the directory processor only accepts png and jpg files.  If there are other image types that would would like included please contact me.
