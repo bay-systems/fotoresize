@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# fotoresize - resize an image or multiple images
+#
+# If supplied a valid image file as an argument, resizes the image to less
+#  than a maximum width and a maximum height.
+# If supplied a directory as an argument, resizes all images in the directory.
+#
+# Usage: fotoresize <file>|<directory>
+#
+# Author: Felicia Pacifica <felicia@bay.systems>
+# 
+
+maxW=1600  # maximum image width
+maxH=1600  # maximum image height
+tag="scaled"  # tag to append to name of rescaled images
+
+# Test that the magick binary is present
+type -P magick || { echo "The magick binary was not found in \$PATH.  Please make sure ImageMagick is installed." && exit 1; }
+
+# Test that this script is provided exactly one argument
+[[ $# -lt 1 ]] && { echo "no argument supplied" && exit 0; }
+[[ $# -gt 1 ]] && { echo "error, only accepts one argument" && exit 0; }
+
+# Test that the provided argument is a valid file or directory
+[[ -f $1 || -d $1 ]] || { echo "must supply either a file or dir" && exit 0; }
+
+# Tests if a file is an image and if it is not a multi-image sequence (e.g. GIF)
+isValid() {
+    [[ $(magick identify -format %N "$1" >/dev/null 2>&1) -eq 1 ]]
+}
+
+# Tests if image is already smaller than rescale dimensions
+isScaled() {
+    [[ $(magick identify -format %w "$1") -lt $maxW &&
+        $(magick identify -format %h "$1") -lt $maxH ]]
+}
+
+# Process file
+if [[ -f "$1" ]]; then
+    isValid "$1" || { echo "Not a valid image format" && exit 0; }
+    isScaled "$1" && { echo "No need to resize" && exit 0; }
+    magick mogrify -resize "$maxW"x"$maxH" -write "${1%.*}-$tag.${1##*.}" $1
+fi
+
+# Process directory
+if [[ -d "$1" ]]; then
+    [[ -w "$1" ]] || { echo "error: dir not writable" && exit 0; }
+    find "$(realpath $1)" -regextype posix-egrep -type f -iregex '.*\.(png|jpg)' -print0 | while IFS= read -r -d '' fh; do
+        isValid "$1" || { echo "Not a valid image format" && exit 0; }
+        isScaled "$1" && { echo "No need to resize" && exit 0; }
+        magick mogrify -resize "$maxW"x"$maxH" -write "${fh%.*}-$tag.${fh##*.}" "$fh"
+    done
+fi
+
+echo "Done with processing."

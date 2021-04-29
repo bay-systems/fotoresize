@@ -1,0 +1,27 @@
+#!/bin/bash
+
+maxW=1600  # maximum image width
+maxH=1600  # maximum image height
+tag="scaled"  # tag for processed images
+
+[[ $# -lt 1 ]] && { echo "no argument supplied" && exit 0; }
+[[ $# -gt 1 ]] && { echo "error, only accepts one argument" && exit 0; }
+[[ -f $1 || -d $1 ]] || { echo "must supply either a file or dir" && exit 0; }
+
+
+isSmall() {
+    [[ $(magick identify -format %w "$1") -lt $maxW &&
+        $(magick identify -format %h "$1") -lt $maxH ]]
+}
+
+if [[ -f "$1" ]]; then
+    isSmall "$1" && exit 0
+    magick mogrify -resize "$maxW"x"$maxH" -write "${1%.*}-$tag.${1##*.}" $1
+fi
+
+if [[ -d "$1" ]]; then
+    [[ -w "$1" ]] || { echo "error: dir not writable" && exit 0; }
+    find "$(realpath $1)" -regextype posix-egrep -type f -iregex '.*\.(png|jpg)' -print0 | while IFS= read -r -d '' fh; do
+        magick mogrify -resize "$maxW"x"$maxH" -write "${fh%.*}-$tag.${fh##*.}" $fh
+    done
+fi
